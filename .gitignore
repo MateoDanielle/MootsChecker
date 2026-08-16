@@ -1,0 +1,5 @@
+instagram_session.json
+__pycache__/
+build/
+dist/
+*.spec
