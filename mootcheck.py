@@ -121,7 +121,6 @@ def collect_users(page, list_type):
                 "No new usernames found for "
                 "5 consecutive scrolls."
             )
-
             break
 
         if round_number % 5 == 0:
