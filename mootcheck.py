@@ -1,6 +1,8 @@
 from playwright.sync_api import sync_playwright
 import re
 import time
+import os
+import sys
 
 
 def collect_users(page, list_type):
@@ -262,6 +264,51 @@ def get_logged_in_username(page):
     return username
 
 
+def get_chromium_path():
+    """
+    Find Chromium whether running normally
+    from Python or from a PyInstaller EXE.
+    """
+
+    if getattr(sys, "frozen", False):
+
+        # ----------------------------------------
+        # Running as PyInstaller EXE
+        # ----------------------------------------
+
+        base_dir = sys._MEIPASS
+
+        chromium_path = os.path.join(
+            base_dir,
+            "chromium",
+            "chrome-win64",
+            "chrome.exe"
+        )
+
+    else:
+
+        # ----------------------------------------
+        # Running normally from Python
+        # ----------------------------------------
+
+        chromium_path = os.path.join(
+            os.environ["LOCALAPPDATA"],
+            "ms-playwright",
+            "chromium-1234",
+            "chrome-win64",
+            "chrome.exe"
+        )
+
+    if not os.path.isfile(chromium_path):
+
+        raise FileNotFoundError(
+            "MootCheck could not find Chromium.\n\n"
+            f"Expected location:\n{chromium_path}"
+        )
+
+    return chromium_path
+
+
 def run_mootcheck():
     """
     Main MootCheck function.
@@ -282,16 +329,30 @@ def run_mootcheck():
 
     with sync_playwright() as p:
 
-        # Fresh browser every run.
+        # ----------------------------------------
+        # FIND CHROMIUM
+        # ----------------------------------------
+
+        chromium_path = get_chromium_path()
+
+        print(
+            f"\nUsing Chromium:\n"
+            f"{chromium_path}"
+        )
+
+        # ----------------------------------------
+        # START BROWSER
+        # ----------------------------------------
+
         browser = p.chromium.launch(
+            executable_path=chromium_path,
             headless=False
         )
 
-        # IMPORTANT:
-        # No storage_state is used.
-        #
-        # This means Instagram login information
-        # is NOT loaded from a saved session file.
+        # ----------------------------------------
+        # CREATE CONTEXT
+        # ----------------------------------------
+
         context = browser.new_context()
 
         page = context.new_page()
@@ -362,7 +423,8 @@ def run_mootcheck():
                 "followers": followers,
                 "following": following,
                 "mutuals": mutuals,
-                "not_following_back": not_following_back,
+                "not_following_back":
+                    not_following_back,
                 "followers_you_dont_follow":
                     followers_you_dont_follow,
             }
@@ -375,33 +437,43 @@ def run_mootcheck():
 
 if __name__ == "__main__":
 
-    results = run_mootcheck()
+    try:
 
-    print("\n========================================")
-    print("              RESULTS")
-    print("========================================")
+        results = run_mootcheck()
 
-    print(
-        "Followers:",
-        len(results["followers"])
-    )
+        print("\n========================================")
+        print("              RESULTS")
+        print("========================================")
 
-    print(
-        "Following:",
-        len(results["following"])
-    )
+        print(
+            "Followers:",
+            len(results["followers"])
+        )
 
-    print(
-        "Mutuals:",
-        len(results["mutuals"])
-    )
+        print(
+            "Following:",
+            len(results["following"])
+        )
 
-    print(
-        "Don't follow you back:",
-        len(results["not_following_back"])
-    )
+        print(
+            "Mutuals:",
+            len(results["mutuals"])
+        )
 
-    print(
-        "You don't follow back:",
-        len(results["followers_you_dont_follow"])
-    )
+        print(
+            "Don't follow you back:",
+            len(results["not_following_back"])
+        )
+
+        print(
+            "You don't follow back:",
+            len(results["followers_you_dont_follow"])
+        )
+
+    except Exception as e:
+
+        print("\n========================================")
+        print("               ERROR")
+        print("========================================")
+
+        print(e)
