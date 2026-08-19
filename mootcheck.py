@@ -145,123 +145,160 @@ def collect_users(page, list_type):
 
 
 def wait_for_login(page):
-    """Open Instagram and wait for the user to log in."""
+    """Wait for the user to complete Instagram login and verification."""
 
     print("\nOpening Instagram...")
     print("Please log in using the browser window.")
-    print("MootCheck will continue after you finish logging in.\n")
+    print(
+        "If Instagram shows a CAPTCHA or verification, "
+        "complete it manually."
+    )
+    print(
+        "MootCheck will continue automatically afterward.\n"
+    )
 
     page.goto(
         "https://www.instagram.com/accounts/login/",
-        wait_until="domcontentloaded"
+        wait_until="domcontentloaded",
+        timeout=30000
     )
 
-    # Give the login page time to load.
-    page.wait_for_timeout(3000)
+    print("Waiting for Instagram login/verification...")
 
-    print("Waiting for Instagram login...")
-
-    # Wait until Instagram leaves the login page.
-    # We allow up to 5 minutes.
+    # Allow up to 5 minutes for login + CAPTCHA/verification.
     deadline = time.time() + 300
 
     while time.time() < deadline:
 
-        current_url = page.url
+        try:
 
-        # Instagram normally leaves /accounts/login/
-        # after successful login.
-        if "/accounts/login" not in current_url:
+            current_url = page.url.lower()
 
-            print("Login detected.")
+            # ----------------------------------------
+            # STILL IN LOGIN / VERIFICATION FLOW
+            # ----------------------------------------
 
+            if (
+                "/accounts/login" in current_url
+                or "/challenge/" in current_url
+                or "/accounts/onetap/" in current_url
+            ):
+
+                page.wait_for_timeout(1500)
+                continue
+
+            # ----------------------------------------
+            # LOGIN MAY HAVE COMPLETED
+            # ----------------------------------------
+
+            # Give Instagram time to establish the
+            # authenticated session after CAPTCHA.
             page.wait_for_timeout(3000)
 
-            return True
+            # Look for normal Instagram page content.
+            links = page.locator("a[href]")
+
+            if links.count() > 0:
+
+                print(
+                    "Login and verification completed."
+                )
+
+                # Give Instagram additional time to
+                # finish rendering the authenticated UI.
+                page.wait_for_timeout(2000)
+
+                return True
+
+        except Exception:
+            pass
 
         page.wait_for_timeout(1000)
 
     raise RuntimeError(
-        "Login timed out. "
+        "Instagram login/verification timed out.\n"
         "Please restart MootCheck and try again."
     )
 
 
 def get_logged_in_username(page):
-    """Try to determine the username of the logged-in account."""
+    """Determine the username of the logged-in Instagram account."""
 
     print("Detecting logged-in account...")
 
-    # First try the profile link in the navigation.
-    try:
+    ignored = {
+        "accounts",
+        "explore",
+        "direct",
+        "reels",
+        "stories",
+        "about",
+        "developer",
+        "privacy",
+        "terms",
+    }
 
-        links = page.locator("a[href]")
+    # Give Instagram a little time to finish rendering
+    # the authenticated navigation/profile elements.
+    deadline = time.time() + 20
 
-        for i in range(links.count()):
+    while time.time() < deadline:
 
-            try:
+        try:
 
-                href = links.nth(i).get_attribute("href")
+            links = page.locator("a[href]")
 
-                if not href:
-                    continue
+            for i in range(links.count()):
 
-                match = re.fullmatch(
-                    r"/([A-Za-z0-9._]+)/?",
-                    href
-                )
+                try:
 
-                if match:
+                    href = links.nth(i).get_attribute("href")
+
+                    if not href:
+                        continue
+
+                    match = re.fullmatch(
+                        r"/([A-Za-z0-9._]+)/?",
+                        href
+                    )
+
+                    if not match:
+                        continue
 
                     username = match.group(1)
 
-                    ignored = {
-                        "accounts",
-                        "explore",
-                        "direct",
-                        "reels",
-                        "stories",
-                        "about",
-                        "developer",
-                        "privacy",
-                        "terms",
-                    }
+                    if username.lower() in ignored:
+                        continue
 
-                    if username.lower() not in ignored:
+                    # Ignore obvious non-profile routes.
+                    if username.lower() in {
+                        "login",
+                        "signup",
+                        "emails",
+                        "settings",
+                    }:
+                        continue
 
-                        print(
-                            f"Logged in as @{username}"
-                        )
+                    print(
+                        f"Logged in as @{username}"
+                    )
 
-                        return username
+                    return username
 
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
-    except Exception:
-        pass
+        except Exception:
+            pass
 
-    # Fallback: ask the user.
-    print(
-        "Could not automatically detect "
-        "the Instagram username."
+        page.wait_for_timeout(1000)
+
+    raise RuntimeError(
+        "Could not automatically detect the "
+        "logged-in Instagram username.\n\n"
+        "Make sure Instagram has completely finished "
+        "the login and verification process, then try again."
     )
-
-    username = input(
-        "Enter your Instagram username "
-        "(without @): "
-    ).strip()
-
-    username = username.lstrip("@")
-
-    if not username:
-        raise RuntimeError(
-            "No Instagram username was provided."
-        )
-
-    print(f"Using @{username}")
-
-    return username
 
 
 def get_chromium_path():
@@ -382,7 +419,8 @@ def run_mootcheck():
 
             page.goto(
                 f"https://www.instagram.com/{username}/",
-                wait_until="domcontentloaded"
+                wait_until="domcontentloaded",
+                timeout=30000
             )
 
             page.wait_for_timeout(3000)
