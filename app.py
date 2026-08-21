@@ -613,8 +613,9 @@ class MootCheckApp:
         self._show_intro_dialog()
 
     def _show_results(self):
-        if self.loading_dialog is not None and self.loading_dialog.winfo_exists():
-            self.loading_dialog.destroy()
+        # Keep the loading dialog on screen as a leftover window, the same
+        # way the 3-window intro stack is left in place — don't destroy it,
+        # just stop tracking it as "the active loading dialog".
         self.loading_dialog = None
 
         for win in self.result_windows:
@@ -629,7 +630,7 @@ class MootCheckApp:
         w1 = XPListWindow(self.root, "Accounts that don't follow you back",
                            not_back, x=50, y=70, width=310, height=400)
         w2 = XPListWindow(self.root, "accounts that you don't follow back",
-                           you_dont, x=130, y=140, width=310, height=400)
+                           you_dont, x=200, y=230, width=310, height=400)
         self.result_windows += [w1, w2]
 
         stats = [
