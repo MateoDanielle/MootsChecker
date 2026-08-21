@@ -210,7 +210,7 @@ class XPWindow(tk.Frame):
         self.titlebar.create_text(8, self.titlebar_h // 2, anchor="w",
                                    text=icon_char, font=ui_font(10), fill="white")
         self.titlebar.create_text(26, self.titlebar_h // 2, anchor="w",
-                                   text=title, font=ui_font(9, "bold"),
+                                   text=title, font=ui_font(6, "bold"),
                                    fill="white")
 
         btn_w, gap = 17, 2
@@ -633,18 +633,21 @@ class MootCheckApp:
                            you_dont, x=200, y=230, width=310, height=400)
         self.result_windows += [w1, w2]
 
+        # Fixed cascade positions/sizes for the 5 right-side stat windows,
+        # given as (x, y, width, height). Original coordinates were on a
+        # canvas taller than the app's 640px height, so y/height were
+        # scaled by 640/1024 to fit; x/width were left as given since they
+        # already fit within the app's 1024px width.
         stats = [
-            ("followers", len(results["followers"])),
-            ("following", len(results["following"])),
-            ("mutuals", len(results["mutuals"])),
-            ("accounts that don't follow you back", len(not_back)),
-            ("accounts that you don't follow back", len(you_dont)),
+            ("followers", len(results["followers"]), 783, 26, 176, 134),
+            ("following", len(results["following"]), 801, 117, 177, 131),
+            ("mutuals", len(results["mutuals"]), 789, 218, 170, 128),
+            ("don't follow you back", len(not_back), 815, 325, 176, 129),
+            ("you don't follow back", len(you_dont), 800, 425, 176, 133),
         ]
-        base_x, base_y = 630, 30
-        for i, (label, value) in enumerate(stats):
+        for label, value, x, y, width, height in stats:
             win = XPStatWindow(self.root, label, value,
-                                x=base_x + i * 14, y=base_y + i * 100,
-                                width=280, height=90)
+                                x=x, y=y, width=width, height=height)
             self.result_windows.append(win)
 
     # ---------------- run ----------------
