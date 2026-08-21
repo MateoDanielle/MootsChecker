@@ -574,11 +574,8 @@ class MootCheckApp:
         dialog.lift()
 
     def _handle_ok(self, dialog):
-        for d in self._intro_dialogs:
-            if d.winfo_exists():
-                d.destroy()
-        self._intro_dialogs = []
-
+        # Leave the 3-window stack on screen; just bring up the loading
+        # dialog on top of it instead of tearing the stack down.
         self.loading_dialog = XPLoadingDialog(
             self.root, on_done=self._show_results, on_cancel=self._handle_cancel
         )
