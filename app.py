@@ -511,11 +511,21 @@ class MootCheckApp:
     # ---------------- flow: intro -> loading -> results ----------------
 
     def _show_intro_dialog(self):
-        """Show the "Click ok to check your Moots" dialog as a cascaded
-        stack of three copies (back two are decorative/peeking, exactly
-        like the reference screenshot). Only the front-most copy (drawn
-        last, offset the least) is the one that actually advances the
-        flow when its "okay" is clicked."""
+        """Show the "Click ok to check your Moots" dialog as a staggered
+        3-window stack, matching the reference layout:
+
+          - Front (top layer): fully visible, center-left, has the working
+            icon/text/"okay" button. Drawn last so it sits on top of both
+            other copies.
+          - Middle-left (back layer): shifted down-and-left behind the
+            front window, so only its top-left title bar + a sliver of
+            its icon peek out on the lower-left. Drawn first (furthest
+            back).
+          - Middle-right (mid layer): shifted up-and-right behind the
+            front window, so its top-right corner (red "X" button) and
+            the tail end of its text peek out on the upper-right. Drawn
+            second (between the other two).
+        """
         self._cancelled = False
 
         # Clean up any leftover copies from a previous cancel/error retry.
@@ -524,24 +534,37 @@ class MootCheckApp:
                 d.destroy()
         self._intro_dialogs = []
 
-        base_x, base_y = 340, 350
-        offset_x, offset_y = 26, 22
-        copies = 3
+        base_x, base_y = 300, 370
 
-        # Build back-to-front: the most-offset copy is placed first (so it
-        # ends up furthest back / bottom of the stack), and the least-offset
-        # copy — sitting at base_x/base_y — is placed last, landing on top
-        # exactly like the original single dialog used to.
-        for i in range(copies - 1, -1, -1):
-            is_front = (i == 0)
-            dlg = XPDialog(
-                self.root,
-                message='Click "ok" to check your Moots.',
-                buttons=[("okay", self._handle_ok if is_front else self._raise_stacked_dialog)],
-                x=base_x + i * offset_x,
-                y=base_y + i * offset_y,
-            )
-            self._intro_dialogs.append(dlg)
+        back_left_x, back_left_y = base_x - 42, base_y + 40      # bottom/back layer
+        mid_right_x, mid_right_y = base_x + 46, base_y - 38      # mid layer
+        front_x, front_y = base_x, base_y                        # front/top layer
+
+        message = 'Click "ok" to check your Moots.'
+
+        # 1) Bottom/back layer — furthest back.
+        back_dlg = XPDialog(
+            self.root, message=message,
+            buttons=[("okay", self._raise_stacked_dialog)],
+            x=back_left_x, y=back_left_y,
+        )
+        self._intro_dialogs.append(back_dlg)
+
+        # 2) Mid layer — sits above the back layer, below the front layer.
+        mid_dlg = XPDialog(
+            self.root, message=message,
+            buttons=[("okay", self._raise_stacked_dialog)],
+            x=mid_right_x, y=mid_right_y,
+        )
+        self._intro_dialogs.append(mid_dlg)
+
+        # 3) Front/top layer — the only interactive copy that advances the flow.
+        front_dlg = XPDialog(
+            self.root, message=message,
+            buttons=[("okay", self._handle_ok)],
+            x=front_x, y=front_y,
+        )
+        self._intro_dialogs.append(front_dlg)
 
     def _raise_stacked_dialog(self, dialog):
         # The two background copies aren't meant to progress the flow —
