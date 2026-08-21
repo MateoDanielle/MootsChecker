@@ -270,8 +270,13 @@ class XPWindow(tk.Frame):
 class XPDialog(XPWindow):
     def __init__(self, parent, message, buttons, width=340, height=150,
                  x=None, y=None):
-        x = 340
-        y = 350
+        # Use the caller's position when given (needed for stacking several
+        # copies of this dialog); otherwise fall back to the original
+        # centered-ish default spot.
+        if x is None:
+            x = 340
+        if y is None:
+            y = 350
         super().__init__(parent, title="Windows XP", x=x, y=y,
                           width=width, height=height, body_bg=DIALOG_BG)
 
@@ -462,6 +467,7 @@ class MootCheckApp:
         self._cancelled = False
         self.loading_dialog = None
         self.result_windows = []
+        self._intro_dialogs = []
 
         self._build_desktop()
         self.root.after(150, self._show_intro_dialog)
@@ -505,15 +511,51 @@ class MootCheckApp:
     # ---------------- flow: intro -> loading -> results ----------------
 
     def _show_intro_dialog(self):
+        """Show the "Click ok to check your Moots" dialog as a cascaded
+        stack of three copies (back two are decorative/peeking, exactly
+        like the reference screenshot). Only the front-most copy (drawn
+        last, offset the least) is the one that actually advances the
+        flow when its "okay" is clicked."""
         self._cancelled = False
-        XPDialog(
-            self.root,
-            message='Click "ok" to check your Moots.',
-            buttons=[("okay", self._handle_ok)],
-        )
+
+        # Clean up any leftover copies from a previous cancel/error retry.
+        for d in self._intro_dialogs:
+            if d.winfo_exists():
+                d.destroy()
+        self._intro_dialogs = []
+
+        base_x, base_y = 340, 350
+        offset_x, offset_y = 26, 22
+        copies = 3
+
+        # Build back-to-front: the most-offset copy is placed first (so it
+        # ends up furthest back / bottom of the stack), and the least-offset
+        # copy — sitting at base_x/base_y — is placed last, landing on top
+        # exactly like the original single dialog used to.
+        for i in range(copies - 1, -1, -1):
+            is_front = (i == 0)
+            dlg = XPDialog(
+                self.root,
+                message='Click "ok" to check your Moots.',
+                buttons=[("okay", self._handle_ok if is_front else self._raise_stacked_dialog)],
+                x=base_x + i * offset_x,
+                y=base_y + i * offset_y,
+            )
+            self._intro_dialogs.append(dlg)
+
+    def _raise_stacked_dialog(self, dialog):
+        # The two background copies aren't meant to progress the flow —
+        # they're just there for the cascaded look — so clicking their
+        # "okay" (reachable only if manually raised) just brings that copy
+        # to the front instead of doing anything else.
+        dialog.lift()
 
     def _handle_ok(self, dialog):
-        dialog.destroy()
+        for d in self._intro_dialogs:
+            if d.winfo_exists():
+                d.destroy()
+        self._intro_dialogs = []
+
         self.loading_dialog = XPLoadingDialog(
             self.root, on_done=self._show_results, on_cancel=self._handle_cancel
         )
