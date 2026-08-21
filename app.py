@@ -270,12 +270,12 @@ class XPWindow(tk.Frame):
 class XPDialog(XPWindow):
     def __init__(self, parent, message, buttons, width=340, height=150,
                  x=None, y=None):
-        x = (APP_W - width) // 2 if x is None else x
-        y = (APP_H - height) // 2 if y is None else y
+        x = 340
+        y = 350
         super().__init__(parent, title="Windows XP", x=x, y=y,
                           width=width, height=height, body_bg=DIALOG_BG)
 
-        icon = tk.Canvas(self.content, width=34, height=34,
+        icon = tk.Canvas(self.content, width=34, height=150,
                           highlightthickness=0, bg=self.body_bg)
         icon.pack(side="left", padx=(16, 10), pady=(18, 8))
         icon.create_oval(2, 2, 32, 32, fill="#3D6FD6", outline="#1E3F94")
