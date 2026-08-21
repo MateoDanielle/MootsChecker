@@ -305,8 +305,8 @@ class XPDialog(XPWindow):
 
 class XPLoadingDialog(XPWindow):
     def __init__(self, parent, on_done, on_cancel, width=300, height=150):
-        x = (APP_W - width) // 2 + 30
-        y = (APP_H - height) // 2 + 30
+        x = 450
+        y = 420
         super().__init__(parent, title="Windows XP", x=x, y=y,
                           width=width, height=height, body_bg=DIALOG_BG)
         self._on_done_cb = on_done
